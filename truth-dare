@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Truth or Dare</title>
+  <style>
+    :root{
+      --pink:#ff4fa3;
+      --blue:#2fb3ff;
+      --bg1:#0b0e1a;
+      --bg2:#11152a;
+      --card:#171b33;
+      --text:#eaf2ff;
+      --muted:#a9b3cc;
+      --accent: #ffe066;
+      --neon-glow: drop-shadow(0 0 8px rgba(255,79,163,.8)) drop-shadow(0 0 16px rgba(47,179,255,.6));
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      background: radial-gradient(1200px 800px at 10% -10%, rgba(255,79,163,.25), transparent 40%),
+                 radial-gradient(1000px 600px at 110% 10%, rgba(47,179,255,.25), transparent 40%),
+                 linear-gradient(160deg, var(--bg1), var(--bg2));
+      overflow-x:hidden;
+    }
+    /* Floating neon orbs */
+    .orb{position:fixed; inset:auto; width:40vmin; height:40vmin; filter:blur(40px); opacity:.25; pointer-events:none; mix-blend-mode:screen; animation:float 18s ease-in-out infinite alternate}
+    .orb.pink{background:radial-gradient(circle at 30% 30%, var(--pink), transparent 60%); top:-10vmin; left:-10vmin}
+    .orb.blue{background:radial-gradient(circle at 70% 70%, var(--blue), transparent 60%); bottom:-10vmin; right:-10vmin; animation-duration:22s}
+    @keyframes float{to{transform:translate(4vmin,6vmin) scale(1.05)}}
+
+    header{
+      position:sticky; top:0; z-index:10;
+      background:linear-gradient(to bottom, rgba(11,14,26,.85), rgba(11,14,26,.35) 70%, transparent);
+      backdrop-filter:saturate(140%) blur(6px);
+    }
+    .wrap{max-width:1100px; margin:0 auto; padding:16px}
+    .brand{display:flex; gap:12px; align-items:center}
+    .logo{
+      width:40px; height:40px; border-radius:12px; background:
+        conic-gradient(from 210deg, var(--pink), var(--blue));
+      box-shadow:0 0 24px rgba(255,79,163,.6), 0 0 32px rgba(47,179,255,.4) inset;
+      animation:pulse 2.6s ease-in-out infinite;
+    }
+    @keyframes pulse{50%{transform:scale(1.06)}}
+    h1{font-size:clamp(20px, 2.4vw + 12px, 36px); margin:0}
+    .subtitle{color:var(--muted); font-size:.95rem}
+
+    .layout{display:grid; grid-template-columns: 1fr; gap:18px; padding:18px}
+    @media(min-width:920px){.layout{grid-template-columns: 280px 1fr}}
+
+    .panel{
+      background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.0));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:18px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.03);
+    }
+
+    .controls .section{padding:10px 8px; border-bottom:1px dashed rgba(255,255,255,.08)}
+    .controls .section:last-child{border-bottom:none}
+    .controls h3{margin:0 0 8px; font-size:1rem}
+    .controls label{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:8px 0; color:var(--text)}
+    .controls input[type="range"]{width:100%}
+
+    .toggle{position:relative; display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.08)}
+    .toggle input{appearance:none; width:38px; height:22px; background:#0f1427; border-radius:999px; position:relative; outline:none; cursor:pointer; box-shadow:inset 0 0 0 2px rgba(255,255,255,.08)}
+    .toggle input::after{content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:linear-gradient(135deg, var(--pink), var(--blue)); transition:transform .25s ease}
+    .toggle input:checked::after{transform:translateX(16px)}
+
+    .pill{display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); font-size:.9rem}
+
+    .card{position:relative; perspective: 1000px; height:min(60vh, 520px)}
+    .flip{position:absolute; inset:0; transform-style:preserve-3d; transition: transform .8s cubic-bezier(.2,.7,.1,1);}
+    .card.flipped .flip{transform:rotateY(180deg)}
+    .face{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:22px; border-radius:20px; border:1px solid rgba(255,255,255,.1); background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); box-shadow: 0 30px 80px rgba(0,0,0,.35)}
+    .front{backface-visibility:hidden}
+    .back{transform:rotateY(180deg); backface-visibility:hidden}
+    .prompt{font-size:clamp(18px, 2.6vmin + 10px, 30px); line-height:1.35; text-align:center}
+    .meta{position:absolute; left:16px; bottom:16px; display:flex; flex-wrap:wrap; gap:8px}
+
+    .actions{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:16px}
+    button{
+      --glow: drop-shadow(0 0 10px rgba(255,79,163,.5)) drop-shadow(0 0 18px rgba(47,179,255,.35));
+      border:none; cursor:pointer; padding:12px 16px; border-radius:14px; color:#0b0e1a; font-weight:700; letter-spacing:.2px;
+      background:linear-gradient(135deg, var(--pink), var(--blue)); filter:var(--glow);
+      transition:transform .12s ease, filter .3s ease; user-select:none
+    }
+    button:hover{transform:translateY(-1px) scale(1.02)}
+    button:active{transform:translateY(1px) scale(.98)}
+    .ghost{background:transparent; color:var(--text); border:1px solid rgba(255,255,255,.12); filter:none}
+
+    .footer{display:flex; justify-content:space-between; align-items:center; gap:10px; color:var(--muted); font-size:.9rem; margin-top:10px}
+    .progress{height:8px; background:#0f1427; border:1px solid rgba(255,255,255,.08); border-radius:999px; overflow:hidden}
+    .bar{height:100%; width:0%; background:linear-gradient(90deg, var(--pink), var(--blue))}
+
+    /* Confetti canvas */
+    #confetti{position:fixed; inset:0; pointer-events:none}
+
+    /* Floating hearts */
+    .hearts{position:fixed; bottom:10px; right:10px; display:flex; gap:6px; opacity:.6}
+    .heart{width:10px; height:10px; transform:rotate(45deg); animation:pop 3.8s ease-in infinite}
+    .heart::before,.heart::after{content:""; position:absolute; width:10px; height:10px; background:inherit; border-radius:50%}
+    .heart::before{left:-5px}
+    .heart::after{top:-5px}
+    .heart.pink{background:var(--pink)}
+    .heart.blue{background:var(--blue)}
+    @keyframes pop{0%{transform:translateY(0) scale(.8) rotate(45deg)} 50%{transform:translateY(-18px) scale(1.1) rotate(45deg)} 100%{transform:translateY(0) scale(.8) rotate(45deg)}}
+
+    /* Toast */
+    .toast{position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:#0f1427; color:var(--text); border:1px solid rgba(255,255,255,.12); padding:10px 14px; border-radius:12px; box-shadow:0 12px 30px rgba(0,0,0,.4); opacity:0; pointer-events:none; transition:opacity .25s ease}
+    .toast.show{opacity:1}
+
+    /* Player setup */
+    .player-setup{display:none; position:fixed; inset:0; background:rgba(11,14,26,.9); backdrop-filter:blur(10px); z-index:100; justify-content:center; align-items:center}
+    .player-setup.show{display:flex}
+    .setup-panel{background:var(--card); border:1px solid rgba(255,255,255,.15); border-radius:20px; padding:30px; min-width:400px; max-width:90vw}
+    .setup-panel h2{margin-top:0; text-align:center}
+    .setup-panel input{width:100%; padding:12px; margin:8px 0; border:1px solid rgba(255,255,255,.2); border-radius:8px; background:rgba(255,255,255,.05); color:var(--text); font-size:16px}
+    .setup-panel input:focus{outline:none; border-color:var(--pink); box-shadow:0 0 0 2px rgba(255,79,163,.3)}
+    .players-list{display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center}
+
+    /* Current player display */
+    .current-player{
+      position:absolute; top:16px; right:16px;
+      background:linear-gradient(135deg, var(--pink), var(--blue));
+      padding:8px 16px; border-radius:999px; color:#0b0e1a; font-weight:700;
+      filter:var(--neon-glow); animation:neon-pulse 2s ease-in-out infinite;
+    }
+    @keyframes neon-pulse{0%,100%{filter:var(--neon-glow)} 50%{filter:var(--neon-glow) brightness(1.2)}}
+
+    /* Players list in controls */
+    .players-display{max-height:150px; overflow-y:auto}
+    .player-item{display:flex; justify-content:space-between; align-items:center; padding:4px 8px; margin:2px 0; border-radius:8px; background:rgba(255,255,255,.02)}
+    .player-item.active{background:linear-gradient(135deg, rgba(255,79,163,.3), rgba(47,179,255,.3)); filter:var(--neon-glow)}
+  </style>
+</head>
+<body>
+  <canvas id="confetti"></canvas>
+  <div class="orb pink"></div>
+  <div class="orb blue"></div>
+
+  <!-- Player Setup Modal -->
+  <div class="player-setup show" id="playerSetup">
+    <div class="setup-panel">
+      <h2>Configuration des Joueurs</h2>
+      <label>Nombre de joueurs (2-8):</label>
+      <input type="number" id="numPlayers" min="2" max="8" value="2">
+      <div id="playersInputs"></div>
+      <div class="actions" style="margin-top:20px">
+        <button id="startGame">Commencer la partie 🎉</button>
+      </div>
+    </div>
+  </div>
+
+  <header>
+    <div class="wrap" style="display:flex; align-items:center; justify-content:space-between; gap:14px">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>Soirée Flirt · Action ou Vérité</h1>
+          <div class="subtitle">Ambiance rose & bleu · fun, réactif et anti-ennui ✨</div>
+        </div>
+      </div>
+      <div class="pill" title="Nombre de cartes disponibles">
+        <span id="count">0</span> cartes
+      </div>
+    </div>
+  </header>
+
+  <main class="layout wrap">
+    <!-- Controls -->
+    <aside class="panel controls">
+      <div class="section">
+        <h3>Joueurs</h3>
+        <div class="players-display" id="playersDisplay"></div>
+        <div class="actions" style="justify-content:flex-start">
+          <button class="ghost" id="setupPlayers">Configurer</button>
+          <button class="ghost" id="nextPlayer">Joueur suivant</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Mode de jeu</h3>
+        <label class="toggle"><span>Truth & Dare</span><input id="mode-mixed" type="checkbox" checked /></label>
+        <div class="actions" style="justify-content:flex-start">
+          <button class="ghost" id="only-truth">Truth</button>
+          <button class="ghost" id="only-dare">Dare</button>
+          <button class="ghost" id="reset-mode">Mix</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Niveau piment</h3>
+        <label>Filtre (1 = doux, 3 = corsé)
+          <input id="spice" type="range" min="1" max="3" step="1" value="3" />
+        </label>
+        <div class="subtitle">Astuce : active le mode 18+ pour débloquer les cartes les plus audacieuses.</div>
+      </div>
+
+      <div class="section">
+        <h3>Contenu</h3>
+        <label class="toggle"><span>Mode 18+</span><input id="adult" type="checkbox" /></label>
+        <label class="toggle"><span>Pas timide 😏</span><input id="bold" type="checkbox" /></label>
+        <div class="actions" style="justify-content:flex-start">
+          <button class="ghost" id="reshuffle">Mélanger</button>
+          <button class="ghost" id="undo">Annuler</button>
+          <button class="ghost" id="skip">Passer</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Minuteur</h3>
+        <label>Durée (secondes)
+          <input id="timer" type="range" min="10" max="120" step="5" value="30" />
+        </label>
+        <div class="progress" aria-label="progression du temps"><div class="bar" id="bar"></div></div>
+      </div>
+
+      <div class="section">
+        <h3>Statistiques</h3>
+        <div class="subtitle"><span id="stats">0 jouées · 0 restantes</span></div>
+      </div>
+    </aside>
+
+    <!-- Card -->
+    <section>
+      <div class="panel card" id="card">
+        <div class="current-player" id="currentPlayer" style="display:none">Tour de: <span id="playerName"></span></div>
+        <div class="flip">
+          <div class="face front">
+            <div class="prompt" id="prompt">Configurez vos joueurs pour commencer 💫</div>
+            <div class="meta" id="meta"></div>
+          </div>
+          <div class="face back">
+            <div class="prompt">💡 Astuce : Maintenez l'ambiance ! Utilisez « Passer » si une carte ne convient pas.</div>
+          </div>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="new">Nouvelle carte</button>
+        <button class="ghost" id="flip">Retourner</button>
+        <button class="ghost" id="celebrate">Célébrer 🎉</button>
+      </div>
+      <div class="footer">
+        <div>Sans répétition jusqu'à épuisement · Sauvegarde locale automatique</div>
+        <div>
+          <button class="ghost" id="export">Exporter la soirée (.json)</button>
+          <button class="ghost" id="import">Importer</button>
+          <input type="file" id="file" accept="application/json" hidden />
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="hearts" aria-hidden="true">
+    <div class="heart pink" style="animation-delay:0s"></div>
+    <div class="heart blue" style="animation-delay:.4s"></div>
+    <div class="heart pink" style="animation-delay:.8s"></div>
+  </div>
+
+  <div class="toast" id="toast">Copié !</div>
+
+  <script>
+    // --------- Enhanced Data with explicit 18+ content
+    const TRUTHS = [
+      // Niveau 1 - Doux
+      {t:'Quel est un trait chez toi dont tu es secrètement fier·e ?', s:1},
+      {t:"Ta définition d'un rendez-vous parfait en 3 mots ?", s:1},
+      {t:"Quel petit geste d'affection te fait fondre ?", s:1},
+      {t:"Plutôt messages mignons le matin ou appels tard le soir ?", s:1},
+      {t:"Quelle chanson te met instantanément en humeur romance ?", s:1},
+      {t:"Ton langage de l'amour dominant ? (temps, cadeaux, mots, services, contact)", s:1},
+      {t:"Quelle est ta limite non négociable dans une relation ?", s:1},
+      {t:"Un crush de célébrité un peu honteux ?", s:1},
+      {t:"Qu'est-ce qui te fait sourire bêtement à chaque fois ?", s:1},
+      {t:"Décris ton style de flirt en 5 mots.", s:1},
+      {t:"Quand t'es-tu senti·e le·la plus charmant·e récemment ?", s:1},
+      {t:"Comment te remets-tu d'un râteau ?", s:1},
+      {t:"Ta zone de confort en soirée : chill canapé ou danse non-stop ?", s:1},
+      {t:"Quel compliment tu aimerais entendre plus souvent ?", s:1},
+      {t:"Qu'est-ce qui te rend immédiatement curieux·se chez quelqu'un ?", s:1},
+      {t:"Avoue une petite manie mignonne que peu de gens connaissent.", s:1},
+      {t:"Plutôt regard qui dit tout ou mots qui font rougir ?", s:1},
+      {t:"Quel secret fun t'aiderait à mieux te connaître ?", s:1},
+      {t:"Quel est ton plus grand green flag ?", s:1},
+      {t:"As-tu déjà eu un coup de foudre ? Raconte.", s:1},
+      
+      // Niveau 2 - Épicé
+      {t:"Décris ton premier baiser en 3 adjectifs.", s:2},
+      {t:"Quelle est la chose la plus audacieuse que tu aies dite à un crush ?", s:2},
+      {t:"Ton dernier rêve un peu romantique ?", s:2},
+      {t:"Un lieu public où tu as eu un moment ultra complice ?", s:2},
+      {t:"La chose la plus irrésistible chez un·e partenaire ?", s:2},
+      {t:"Un scénario de film romantique que tu aimerais vivre ?", s:2},
+      {t:"As-tu déjà fait un geste spontané pour séduire ? Lequel ?", s:2},
+      {t:"Quelle tenue te fait sentir irrésistible ?", s:2},
+      {t:"Ta plus grande envie lors d'un slow ?", s:2},
+      {t:"Qu'est-ce qui te fait rougir instantanément ?", s:2},
+      {t:"Plutôt teasing par messages ou en face à face ?", s:2},
+      {t:"As-tu déjà envoyé un message trop audacieux ? Contexte ?", s:2},
+      {t:"Une chose simple qui te donne envie de te rapprocher ?", s:2},
+      {t:"Décris une caresse non-verbale (regard, main, proximité) que tu aimes.", s:2},
+      {t:"Le dernier moment où tu t'es senti·e très désiré·e ?", s:2},
+      {t:"Qu'aimerais-tu expérimenter en couple que tu n'as pas encore tenté ?", s:2},
+      {t:"As-tu un code secret pour dire « je veux toi » en public ?", s:2},
+      {t:"Quel est ton super-pouvoir de séduction le plus sous-estimé ?", s:2},
+      {t:"Raconte une fois où un silence valait mille mots.", s:2},
+      
+      // Niveau 3 - Corsé (18+)
+      {t:"Raconte une situation où la tension était électrique 😏 (sans détails).", s:3, a:true},
+      {t:"Quel est un fantasme soft que tu peux partager en un mot ?", s:3, a:true},
+      {t:"Quel type de baiser te fait perdre la notion du temps ?", s:3, a:true},
+      {t:"Quelle limite 18+ tu veux clairement poser ?", s:3, a:true},
+      {t:"Quel souvenir 18+ reste drôle avec le recul (sans détails) ?", s:3, a:true},
+      {t:"Dis au ralenti le compliment le plus audacieux que tu oserais dire.", s:3, a:true},
+      {t:"Chuchote une promesse soft pour plus tard.", s:3, a:true},
+      {t:"Quelle partie du corps de ton partenaire attire le plus ton attention ?", s:3, a:true},
+      {t:"Quel est ton endroit préféré pour être embrassé·e ?", s:3, a:true},
+      {t:"As-tu déjà eu un fantasme avec quelqu'un de présent ce soir ?", s:3, a:true},
+      {t:"Quelle est la chose la plus chaude que tu aies murmuré à l'oreille de quelqu'un ?", s:3, a:true},
+      {t:"Dans quelle position aimes-tu le plus être enlacé·e ?", s:3, a:true},
+      {t:"Quel est ton moment préféré pendant les préliminaires ?", s:3, a:true},
+      {t:"As-tu déjà fait l'amour dans un endroit risqué ? Où ?", s:3, a:true},
+      {t:"Quelle est ta zone érogène la plus sensible ?", s:3, a:true},
+      {t:"Préfères-tu dominer ou être dominé·e au lit ?", s:3, a:true},
+      {t:"Quel est le compliment le plus chaud qu'on t'ait fait sur ton corps ?", s:3, a:true},
+      {t:"As-tu déjà eu un orgasme multiple ?", s:3, a:true},
+      {t:"Quelle est ta technique de séduction la plus efficace au lit ?", s:3, a:true},
+      {t:"Dans quelle tenue te sens-tu le plus sexy pour séduire ?", s:3, a:true}
+    ].map(x=>({type:'truth', text:x.t, spice:x.s, adult:!!x.a, tags:['get-to-know']}));
+
+    const DARES = [
+      // Niveau 1 - Doux
+      {t:"Regarde {player} dans les yeux pendant 10 secondes sans parler.", s:1},
+      {t:"Complimente {player} avec trois qualités sincères.", s:1},
+      {t:"Envoie un emoji mystérieux à un ami et ne réponds plus pendant 5 min.", s:1},
+      {t:"Fais deviner ton film romantique préféré en mime.", s:1},
+      {t:"Danse un slow imaginaire de 15 secondes.", s:1},
+      {t:"Raconte une mini-histoire d'une rencontre rêvée (30 s).", s:1},
+      {t:"Fais un selfie duo avec {player} avec la meilleure pose complice.", s:1},
+      {t:"Fais un clin d'œil + sourire signature à {player}.", s:1},
+      {t:"Fais un toast romantique comme dans un film.", s:1},
+      {t:"Montre ta démarche « premier rendez-vous ».", s:1},
+      {t:"Décris un câlin parfait (sans détails).", s:1},
+      {t:"Écris un DM d'ouverture clever (sans l'envoyer).", s:1},
+      {t:"Imite la voix douce que tu utilises pour charmer.", s:1},
+      {t:"Fais rire {player} en 15 secondes.", s:1},
+      {t:"Fais un mini-jeu de regard avec {player} : pas de clignement 10 s.", s:1},
+      {t:"Propose un surnom mignon à {player} (avec consentement).", s:1},
+      {t:"Décris un rendez-vous spontané que tu organiserais demain.", s:1},
+      {t:"Montre ta pose photo la plus confident.", s:1},
+      {t:"Crée une poignée de main secrète avec {player}.", s:1},
+      
+      // Niveau 2 - Épicé
+      {t:"Chuchote à l'oreille de {player} un mot qui te fait craquer.", s:2},
+      {t:"Choisis une musique et fais un déhanché stylé (10 s).", s:2},
+      {t:"Décris au ralenti un baiser de cinéma (sans geste 18+).", s:2},
+      {t:"Prends la main de {player} 5 secondes si OK.", s:2},
+      {t:"Whisper Challenge avec {player} : susurre un compliment difficile à deviner.", s:2},
+      {t:"Fais monter la tension en 2 phrases… puis dis « à toi ».", s:2},
+      {t:"Danse collé-décollé avec {player}… sans toucher (10 s).", s:2},
+      {t:"Décris une tenue que tu aimerais voir sur {player}.", s:2},
+      {t:"Pose ta main près de celle de {player} et décris ce que tu ressens (si OK).", s:2},
+      {t:"Décris un baiser idéal en une phrase (sans détail).", s:2},
+      {t:"Fais un compte à rebours de 5 en regardant {player} intensément, puis souris.", s:2},
+      {t:"Propose un pacte : pas timide pendant 2 cartes avec {player} (si OK).", s:2},
+      {t:"Chuchote une promesse soft à {player} pour plus tard (si OK).", s:2},
+      {t:"Décris la sensation d'un câlin qui dure (sans détail).", s:2},
+      {t:"Trace un cœur dans l'air et offre-le à {player}.", s:2},
+      
+      // Niveau 3 - Corsé (18+)
+      {t:"Décris un slow si proche qu'on entend juste les respirations avec {player} (sans geste).", s:3, a:true},
+      {t:"Fais un massage des épaules à {player} pendant 30 secondes (si consentement).", s:3, a:true},
+      {t:"Murmure à l'oreille de {player} ce que tu aimerais lui faire (soft).", s:3, a:true},
+      {t:"Embrasse {player} sur la joue... très lentement (si OK).", s:3, a:true},
+      {t:"Fais semblant de déshabiller {player} du regard pendant 5 secondes.", s:3, a:true},
+      {t:"Lèche sensuellement tes lèvres en regardant {player}.", s:3, a:true},
+      {t:"Caresse le bras de {player} de manière suggestive (si OK).", s:3, a:true},
+      {t:"Assieds-toi sur les genoux de {player} pendant 10 secondes (si consentement).", s:3, a:true},
+      {t:"Donne un baiser dans le cou de {player} (si OK).", s:3, a:true},
+      {t:"Fais un lap dance de 15 secondes pour {player}.", s:3, a:true},
+      {t:"Enlève un vêtement de ton choix devant {player}.", s:3, a:true},
+      {t:"Suce un doigt de manière suggestive en regardant {player}.", s:3, a:true},
+      {t:"Fais un gémissement soft à l'oreille de {player}.", s:3, a:true},
+      {t:"Décris à {player} ce que tu portes sous tes vêtements.", s:3, a:true},
+      {t:"Touche sensuellement tes propres lèvres en fixant {player}.", s:3, a:true},
+      {t:"Fais semblant d'avoir un orgasme pendant 5 secondes (discret).", s:3, a:true},
+      {t:"Montre à {player} comment tu aimes être caressé·e (sur ton bras).", s:3, a:true},
+      {t:"Murmure un fantasme très court à {player} (une phrase).", s:3, a:true},
+      {t:"Fais un mouvement de bassin suggestif face à {player}.", s:3, a:true},
+      {t:"Lèche les lèvres de {player} avec permission.", s:3, a:true},
+      {t:"Raconte en détail le dernier rêve érotique que tu as fait.", s:3, a:true}
+    ].map(x=>({type:'dare', text:x.t, spice:x.s, adult:!!x.a, tags:['play']}));
+
+    // Compléter jusqu'à 60/60
+    while(TRUTHS.length < 60){ 
+      TRUTHS.push({type:'truth', text:`Question freestyle #${TRUTHS.length+1}: raconte un souvenir qui te définit.`, spice:1, adult:false, tags:['extra']}); 
+    }
+    while(DARES.length < 60){ 
+      DARES.push({type:'dare', text:`Action freestyle #${DARES.length+1}: propose une danse ou un toast original avec {player}.`, spice:1, adult:false, tags:['extra']}); 
+    }
+
+    const ALL = [...TRUTHS, ...DARES];
+
+    // --------- Enhanced State with players management
+    const state = {
+      mode:'mix', // 'truth' | 'dare' | 'mix'
+      spice:3,
+      adult:false,
+      bold:false,
+      deck:[],
+      used:[],
+      history:[],
+      timer:30,
+      countdown:null,
+      players:[],
+      currentPlayerIndex:0,
+      gameStarted:false,
+      lastPlayerCards:{} // Track cards per player to avoid repetition
+    };
+
+    // --------- Elements
+    const el = (id)=>document.getElementById(id);
+    const card = el('card');
+    const promptEl = el('prompt');
+    const metaEl = el('meta');
+    const bar = el('bar');
+    const stats = el('stats');
+    const count = el('count');
+    const toast = el('toast');
+    const playerSetup = el('playerSetup');
+    const currentPlayerEl = el('currentPlayer');
+    const playerNameEl = el('playerName');
+    const playersDisplay = el('playersDisplay');
+
+    // --------- Helpers
+    const save = ()=> localStorage.setItem('flirtDeck', JSON.stringify({
+      used:state.used, 
+      history:state.history, 
+      players:state.players, 
+      currentPlayerIndex:state.currentPlayerIndex,
+      gameStarted:state.gameStarted,
+      lastPlayerCards:state.lastPlayerCards
+    }));
+
+    const load = ()=> {
+      try{ 
+        const d = JSON.parse(localStorage.getItem('flirtDeck')||'{}');
+        state.used = d.used||[]; 
+        state.history = d.history||[];
+        state.players = d.players||[];
+        state.currentPlayerIndex = d.currentPlayerIndex||0;
+        state.gameStarted = d.gameStarted||false;
+        state.lastPlayerCards = d.lastPlayerCards||{};
+        
+        if(state.gameStarted && state.players.length > 0){
+          playerSetup.classList.remove('show');
+          updatePlayersDisplay();
+          updateCurrentPlayer();
+        }
+      }catch(e){}
+    }
+
+    const shuffle = arr => arr.sort(()=>Math.random()-0.5);
+
+    function getOtherPlayers(currentIndex) {
+      return state.players.filter((_, i) => i !== currentIndex);
+    }
+
+    function replacePlaceholders(text, currentPlayer) {
+      const otherPlayers = getOtherPlayers(state.currentPlayerIndex);
+      const randomOther = otherPlayers.length > 0 ? 
+        otherPlayers[Math.floor(Math.random() * otherPlayers.length)] : 
+        'quelqu\'un';
+      return text.replace(/{player}/g, randomOther);
+    }
+
+    function buildDeck(){
+      const currentPlayer = state.players[state.currentPlayerIndex];
+      const playerHistory = state.lastPlayerCards[currentPlayer] || [];
+      
+      const pool = ALL.filter(c => {
+        const spiceOK = c.spice <= state.spice;
+        const adultOK = state.adult ? true : !c.adult;
+        const typeOK = state.mode==='mix' ? true : c.type===state.mode;
+        const boldOK = state.bold ? true : true;
+        const notUsedGlobally = !state.used.includes(c.text+"|"+c.type+"|"+c.spice);
+        const notRecentForPlayer = !playerHistory.slice(-3).includes(c.text+"|"+c.type+"|"+c.spice);
+        
+        return spiceOK && adultOK && typeOK && boldOK && notUsedGlobally && notRecentForPlayer;
+      });
+      
+      state.deck = shuffle(pool);
+      count.textContent = state.deck.length;
+      updateStats();
+    }
+
+    function nextCard(skip=false){
+      if(!state.gameStarted) {
+        showToast("Configurez d'abord les joueurs !");
+        return;
+      }
+      
+      if(!state.deck.length){
+        state.used = [];
+        state.lastPlayerCards = {};
+        buildDeck();
+        showToast("Pile mélangée !");
+      }
+      
+      const card = state.deck.shift();
+      if(!card) return;
+
+      const currentPlayer = state.players[state.currentPlayerIndex];
+      const cardText = replacePlaceholders(card.text, currentPlayer);
+      
+      promptEl.textContent = cardText;
+      metaEl.innerHTML = '';
+      const pill = (txt)=>`<span class="pill">${txt}</span>`;
+      metaEl.insertAdjacentHTML('beforeend', pill(card.type.toUpperCase()));
+      metaEl.insertAdjacentHTML('beforeend', pill('🔥 ' + card.spice));
+      if(card.adult) metaEl.insertAdjacentHTML('beforeend', pill('18+'));
+
+      // Track cards per player and globally
+      if(!skip){
+        const key = card.text+"|"+card.type+"|"+card.spice;
+        state.used.push(key);
+        state.history.push({...card, player: currentPlayer, text: cardText});
+        
+        if(!state.lastPlayerCards[currentPlayer]) {
+          state.lastPlayerCards[currentPlayer] = [];
+        }
+        state.lastPlayerCards[currentPlayer].push(key);
+        
+        // Keep only last 5 cards per player to allow eventual repetition
+        if(state.lastPlayerCards[currentPlayer].length > 5) {
+          state.lastPlayerCards[currentPlayer].shift();
+        }
+        
+        save();
+      }
+      
+      count.textContent = state.deck.length;
+      updateStats();
+      flip(false);
+      startTimer();
+      updateCurrentPlayer();
+    }
+
+    function nextPlayer() {
+      if(state.players.length > 0) {
+        state.currentPlayerIndex = (state.currentPlayerIndex + 1) % state.players.length;
+        buildDeck(); // Rebuild deck for new player
+        updateCurrentPlayer();
+        updatePlayersDisplay();
+        save();
+      }
+    }
+
+    function updateCurrentPlayer() {
+      if(state.gameStarted && state.players.length > 0) {
+        playerNameEl.textContent = state.players[state.currentPlayerIndex];
+        currentPlayerEl.style.display = 'block';
+      } else {
+        currentPlayerEl.style.display = 'none';
+      }
+    }
+
+    function updatePlayersDisplay() {
+      if(state.players.length === 0) {
+        playersDisplay.innerHTML = '<div class="subtitle">Aucun joueur configuré</div>';
+        return;
+      }
+      
+      playersDisplay.innerHTML = state.players.map((player, index) => 
+        `<div class="player-item ${index === state.currentPlayerIndex ? 'active' : ''}">
+          <span>${player}</span>
+          <span>${state.lastPlayerCards[player] ? state.lastPlayerCards[player].length : 0} cartes</span>
+        </div>`
+      ).join('');
+    }
+
+    function setupPlayers() {
+      const numPlayers = parseInt(el('numPlayers').value);
+      const inputs = el('playersInputs');
+      
+      inputs.innerHTML = '';
+      for(let i = 0; i < numPlayers; i++) {
+        const div = document.createElement('div');
+        div.className = 'players-list';
+        div.innerHTML = `
+          <input type="text" placeholder="Nom du joueur ${i+1}" id="player${i}">
+          <button type="button" class="ghost" onclick="this.parentElement.remove()">✕</button>
+        `;
+        inputs.appendChild(div);
+      }
+    }
+
+    function startGame() {
+      const inputs = document.querySelectorAll('#playersInputs input');
+      const players = Array.from(inputs)
+        .map(input => input.value.trim())
+        .filter(name => name.length > 0);
+      
+      if(players.length < 2) {
+        showToast("Il faut au moins 2 joueurs !");
+        return;
+      }
+      
+      if(new Set(players).size !== players.length) {
+        showToast("Les noms doivent être uniques !");
+        return;
+      }
+      
+      state.players = players;
+      state.currentPlayerIndex = 0;
+      state.gameStarted = true;
+      state.lastPlayerCards = {};
+      
+      playerSetup.classList.remove('show');
+      updatePlayersDisplay();
+      updateCurrentPlayer();
+      buildDeck();
+      
+      promptEl.textContent = "C'est parti ! Cliquez sur « Nouvelle carte » 🎉";
+      metaEl.innerHTML = '';
+      
+      save();
+      showToast("Partie lancée !");
+      celebrate();
+    }
+
+    function updateStats(){
+      const totalCards = state.history.length;
+      const remainingCards = state.deck.length;
+      stats.textContent = `${totalCards} jouées · ${remainingCards} restantes`;
+    }
+
+    function flip(force){
+      const isFlipped = card.classList.contains('flipped');
+      const target = force==null ? !isFlipped : force;
+      card.classList.toggle('flipped', target);
+    }
+
+    function startTimer(){
+      stopTimer();
+      const total = state.timer;
+      let t = total; bar.style.width = '100%';
+      const tick = ()=>{
+        t -= 0.05;
+        const p = Math.max(0, t/total*100);
+        bar.style.width = p+'%';
+        if(t<=0){ 
+          stopTimer(); 
+          celebrate(); 
+          showToast('Temps écoulé !');
+          // Auto next player when timer ends
+          setTimeout(() => {
+            nextPlayer();
+            showToast(`Au tour de ${state.players[state.currentPlayerIndex]} !`);
+          }, 2000);
+        }
+      };
+      state.countdown = setInterval(tick, 50);
+    }
+    
+    function stopTimer(){ 
+      if(state.countdown){ 
+        clearInterval(state.countdown); 
+        state.countdown=null; 
+      } 
+    }
+
+    // --------- Confetti (enhanced)
+    const confettiCanvas = document.getElementById('confetti');
+    const ctx = confettiCanvas.getContext('2d');
+    let pieces=[]; let raf=null;
+    function resize(){ confettiCanvas.width=innerWidth; confettiCanvas.height=innerHeight; }
+    addEventListener('resize', resize); resize();
+    
+    function burst(x=innerWidth/2, y=innerHeight/3){
+      for(let i=0;i<150;i++){
+        pieces.push({
+          x,y, 
+          vx:(Math.random()-0.5)*12, 
+          vy:(Math.random()-1)*10, 
+          a:1, 
+          r:2+Math.random()*4, 
+          spin:Math.random()*8,
+          color: Math.random() > 0.5 ? '#ff4fa3' : '#2fb3ff'
+        });
+      }
+      if(!raf){loop();}
+    }
+    
+    function loop(){
+      raf = requestAnimationFrame(loop);
+      ctx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height);
+      for(const p of pieces){
+        p.x+=p.vx; p.y+=p.vy; p.vy+=0.15; p.a-=0.006; p.spin+=0.3;
+        ctx.save(); 
+        ctx.globalAlpha=Math.max(0,p.a);
+        ctx.translate(p.x,p.y); 
+        ctx.rotate(p.spin);
+        ctx.fillStyle=p.color;
+        ctx.fillRect(-p.r,-p.r,p.r*2,p.r*2);
+        ctx.restore();
+      }
+      pieces = pieces.filter(p=>p.a>0 && p.y < confettiCanvas.height + 20);
+      if(!pieces.length){ 
+        cancelAnimationFrame(raf); 
+        raf=null; 
+      }
+    }
+
+    function celebrate(){ burst(); }
+
+    // --------- Toast
+    function showToast(msg){ 
+      toast.textContent = msg; 
+      toast.classList.add('show'); 
+      setTimeout(()=>toast.classList.remove('show'), 2000); 
+    }
+
+    // --------- Import/Export (enhanced)
+    el('export').onclick = ()=>{
+      const data = { 
+        history:state.history, 
+        used:state.used, 
+        players:state.players,
+        lastPlayerCards:state.lastPlayerCards,
+        settings:{
+          mode:state.mode, 
+          spice:state.spice, 
+          adult:state.adult, 
+          bold:state.bold
+        }
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+      const a = document.createElement('a'); 
+      a.href = URL.createObjectURL(blob); 
+      a.download='soiree-flirt-deck.json'; 
+      a.click();
+    }
+    
+    el('import').onclick = ()=> el('file').click();
+    el('file').onchange = (e)=>{
+      const file = e.target.files[0]; 
+      if(!file) return;
+      const r = new FileReader(); 
+      r.onload = ()=>{
+        try{ 
+          const data = JSON.parse(r.result);
+          state.history = data.history||[]; 
+          state.used = data.used||[];
+          state.players = data.players||[];
+          state.lastPlayerCards = data.lastPlayerCards||{};
+          if(data.settings){ 
+            Object.assign(state, data.settings); 
+            syncControlsFromState(); 
+          }
+          if(state.players.length > 0) {
+            state.gameStarted = true;
+            playerSetup.classList.remove('show');
+            updatePlayersDisplay();
+            updateCurrentPlayer();
+          }
+          buildDeck(); 
+          showToast('Import réussi');
+        }catch(err){ 
+          showToast('Fichier invalide'); 
+        }
+      }; 
+      r.readAsText(file);
+    };
+
+    // --------- Controls wiring (enhanced)
+    function syncControlsFromState(){
+      document.getElementById('mode-mixed').checked = (state.mode==='mix');
+      document.getElementById('spice').value = state.spice;
+      document.getElementById('adult').checked = state.adult;
+      document.getElementById('bold').checked = state.bold;
+      document.getElementById('timer').value = state.timer;
+    }
+
+    // Player setup
+    el('numPlayers').oninput = setupPlayers;
+    el('startGame').onclick = startGame;
+    el('setupPlayers').onclick = ()=> {
+      playerSetup.classList.add('show');
+      setupPlayers();
+    };
+    el('nextPlayer').onclick = ()=> {
+      nextPlayer();
+      showToast(`Au tour de ${state.players[state.currentPlayerIndex]} !`);
+    };
+
+    // Game mode
+    el('mode-mixed').onchange = (e)=>{ 
+      state.mode = e.target.checked ? 'mix' : state.mode; 
+      buildDeck(); 
+    }
+    el('only-truth').onclick = ()=>{ 
+      state.mode='truth'; 
+      buildDeck(); 
+      showToast('Mode Truth'); 
+      el('mode-mixed').checked = false;
+    };
+    el('only-dare').onclick = ()=>{ 
+      state.mode='dare'; 
+      buildDeck(); 
+      showToast('Mode Dare'); 
+      el('mode-mixed').checked = false;
+    };
+    el('reset-mode').onclick = ()=>{ 
+      state.mode='mix'; 
+      buildDeck(); 
+      showToast('Mode Mix');
+      el('mode-mixed').checked = true;
+    };
+
+    // Settings
+    el('spice').oninput = (e)=>{ 
+      state.spice = +e.target.value; 
+      buildDeck(); 
+    };
+    el('adult').onchange = (e)=>{ 
+      state.adult = e.target.checked; 
+      buildDeck(); 
+      if(e.target.checked) {
+        showToast('Contenu 18+ activé 🔥');
+      }
+    };
+    el('bold').onchange = (e)=>{ 
+      state.bold = e.target.checked; 
+      buildDeck(); 
+    };
+    el('timer').oninput = (e)=>{ 
+      state.timer = +e.target.value; 
+      if(state.countdown) startTimer(); 
+    };
+
+    // Actions
+    el('new').onclick = ()=>{ 
+      nextCard();
+      // Auto advance to next player after card
+      setTimeout(() => {
+        if(state.players.length > 1) {
+          nextPlayer();
+        }
+      }, 100);
+    };
+    el('skip').onclick = ()=>{ 
+      nextCard(true); 
+      if(state.players.length > 1) {
+        nextPlayer();
+      }
+    };
+    el('undo').onclick = ()=>{
+      const last = state.history.pop();
+      if(last){ 
+        const key = last.text.replace(/{player}/g, '') + "|" + last.type + "|" + last.spice;
+        state.used = state.used.filter(k => !k.includes(last.text.split('|')[0]));
+        
+        // Remove from player history too
+        if(state.lastPlayerCards[last.player]) {
+          state.lastPlayerCards[last.player] = state.lastPlayerCards[last.player]
+            .filter(k => !k.includes(last.text.split('|')[0]));
+        }
+        
+        state.deck.unshift(last); 
+        count.textContent = state.deck.length; 
+        updateStats(); 
+        save(); 
+        showToast('Annulé'); 
+      }
+    }
+    el('reshuffle').onclick = ()=>{ 
+      buildDeck(); 
+      showToast('Mélangé'); 
+    };
+    el('flip').onclick = ()=>{ flip(); };
+    el('celebrate').onclick = ()=>{ celebrate(); };
+
+    // Copy on click
+    promptEl.addEventListener('click', ()=>{
+      navigator.clipboard.writeText(promptEl.textContent||''); 
+      showToast('Copié !');
+    });
+
+    // Init
+    load(); 
+    if(state.gameStarted && state.players.length > 0) {
+      buildDeck();
+    } else {
+      setupPlayers();
+    }
+  </script>
+</body>
+</html>
