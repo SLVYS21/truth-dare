@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Action ou Vérité</title>
+  <title>Truth or Dare</title>
   <style>
     :root{
       --pink:#ff4fa3;
@@ -65,21 +65,37 @@
       .controls{
         position:sticky; top:80px; z-index:20; margin-bottom:10px;
         transition:all 0.3s ease;
+        overflow:hidden;
       }
       .controls.collapsed{
-        max-height:60px; overflow:hidden;
+        height:60px;
+      }
+      .controls:not(.collapsed){
+        height:auto;
+        max-height:80vh;
+        overflow-y:auto;
       }
       .controls.collapsed .controls-content{
-        opacity:0; transform:translateY(-10px);
+        opacity:0; 
+        transform:translateY(-20px);
+        pointer-events:none;
+      }
+      .controls:not(.collapsed) .controls-content{
+        opacity:1; 
+        transform:translateY(0);
+        pointer-events:all;
       }
       .controls-header{
         display:flex; justify-content:space-between; align-items:center;
         padding:12px 16px; cursor:pointer; user-select:none;
         border-bottom:1px solid rgba(255,255,255,.08);
         background:linear-gradient(135deg, rgba(255,79,163,.1), rgba(47,179,255,.1));
+        position:relative;
+        z-index:1;
       }
       .controls-content{
         transition:all 0.3s ease;
+        padding-top:10px;
       }
       .controls-toggle{
         font-size:18px; transition:transform 0.3s ease;
@@ -90,6 +106,7 @@
     }
     @media(min-width:920px){
       .controls-header{display:none}
+      .controls-content{padding-top:0}
     }
 
     .panel{
@@ -217,7 +234,7 @@
   <main class="layout wrap">
     <!-- Controls -->
     <aside class="panel controls collapsed" id="controlsPanel">
-      <div class="controls-header" onclick="toggleControls()">
+      <div class="controls-header" id="controlsToggle">
         <h3 style="margin:0">⚙️ Paramètres</h3>
         <span class="controls-toggle">▼</span>
       </div>
@@ -836,6 +853,17 @@
       document.getElementById('timer').value = state.timer;
     }
 
+    function toggleControls() {
+        const controlsPanel = document.getElementById('controlsPanel');
+        controlsPanel.classList.toggle('collapsed');
+    }
+
+    function autoCollapseControls() {
+        if (window.innerWidth <= 919) {
+            const controlsPanel = document.getElementById('controlsPanel');
+            controlsPanel.classList.add('collapsed');
+        }
+    }
     // Player setup
     el('numPlayers').oninput = setupPlayers;
     el('startGame').onclick = startGame;
@@ -945,7 +973,7 @@
     };
     el('flip').onclick = ()=>{ flip(); };
     el('celebrate').onclick = ()=>{ celebrate(); };
-
+    el('controlsToggle').onclick = toggleControls;
     // Copy on click
     promptEl.addEventListener('click', ()=>{
       navigator.clipboard.writeText(promptEl.textContent||''); 
@@ -958,6 +986,12 @@
       buildDeck();
     } else {
       setupPlayers();
+    }
+    
+    // Initialize mobile controls state
+    if (window.innerWidth <= 919) {
+      const controlsPanel = document.getElementById('controlsPanel');
+      controlsPanel.classList.add('collapsed');
     }
   </script>
 </body>
